@@ -1,4 +1,8 @@
-﻿internal class Program
+﻿using System;
+using System.Linq;
+using System.Runtime.CompilerServices;
+
+internal class Program
 {
     static string INPUT_DIRECTORY = "../../../input/";
     static string[] INPUT_FILES = { "00-trailer.txt" };
@@ -7,10 +11,13 @@
     static int W, H, N, M, L;
     static List<Point> G = new List<Point>();
     static List<SilverPoint> S = new List<SilverPoint>();
-    static Dictionary<Tile, int> TilesAvailable = new Dictionary<Tile, int>();
-    static Dictionary<Tile, int> TilesCost = new Dictionary<Tile, int>();
+    static Dictionary<Tiles, int> TilesAvailable = new Dictionary<Tiles, int>();
+    static Dictionary<Tiles, int> TilesCost = new Dictionary<Tiles, int>();
 
-    static Dictionary<Point, Tile> TileUsate = new Dictionary<Point, Tile>();
+    static Dictionary<Point, Tiles> TileUsate = new Dictionary<Point, Tiles>();
+    static int punteggio = 0;
+
+
     private static void Main(string[] args)
     {
         Read();
@@ -49,17 +56,99 @@
                 string TIDk = parts[0];
                 int TCk = int.Parse(parts[1]);
                 int TNk = int.Parse(parts[2]);
-                TilesAvailable.Add(Tile.fromCode(TIDk), TCk);
-                TilesCost.Add(Tile.fromCode(TIDk), TNk);
+                TilesAvailable.Add(Tiles.fromCode(TIDk), TCk);
+                TilesCost.Add(Tiles.fromCode(TIDk), TNk);
             }
         }
+    }
+    static void Solve()
+    {
+        Dictionary<Tuple<Point, Point>, int> distanzeTraGoldenPoint = new Dictionary<Tuple<Point, Point>, int>();
+
+        // calcoliamo le distanze
+        for (int i = 0; i < N - 1; i++)
+        {
+            Point first = G.ElementAt(i);
+            for (int j = i + 1; j < N; j++)
+            {
+                Point second = G.ElementAt(j);
+                int distance = Math.Abs(first.x - second.x) + Math.Abs(first.y - second.y);
+                distanzeTraGoldenPoint.Add(new Tuple<Point, Point>(first, second), distance);
+            }
+        }
+
+        //for ( int i = 0; i < distanzeTraGoldenPoint.Count; i++)
+        //{
+            var closest = distanzeTraGoldenPoint.OrderBy(kvp => kvp.Value).First();
+
+        //coprire il percorso tra closest.key.Item1 e closest.key.Item2
+            try
+            {
+                FindTheTilesAmong(closest.Key.Item1, closest.Key.Item2);
+            } catch (Exception e) { Console.WriteLine("Non ci sono abbastanza tile");  }
+            distanzeTraGoldenPoint.Remove(closest.Key);
+        //}
+    }
+
+    private static void FindTheTilesAmong(Point G1, Point G2)
+    {
+        int tempPunteggio = 0;
+        Dictionary<Tiles, int> tempTilesAvailable = new Dictionary<Tiles, int>();
+        foreach(var tile in TilesAvailable.Keys)
+        {
+            tempTilesAvailable.Add(tile, TilesAvailable[tile]);
+        }
+        Dictionary<Point, Tiles> tempTileUsate = new Dictionary<Point, Tiles>();
+        
+        Point currentPosition = G1;
+        while (currentPosition.x != G2.x) //se mi devo spostare in x
+        {
+            int spostamentoX = (currentPosition.x < G2.x) ? 1 : -1;
+            List<Tiles> disponibili = new List<Tiles> { Tiles.rettilineo_orizzontale, Tiles.incrocio, Tiles.t_sinistra_destra_su, Tiles.t_sinistra_destra_giu };
+            Tiles? menoCostosa = disponibili.Where(t => tempTilesAvailable[t] > 0).OrderBy(t => TilesCost[t]).FirstOrDefault();
+            if (menoCostosa == null) throw new Exception();
+
+            currentPosition = new Point(currentPosition.x + spostamentoX, currentPosition.y);
+            tempTileUsate.Add(currentPosition, menoCostosa.Value);
+            tempTilesAvailable[menoCostosa.Value] = tempTilesAvailable[menoCostosa.Value] - 1;
+            tempPunteggio += S.Where(s=> s.x == currentPosition.x && s.y == currentPosition.y).FirstOrDefault()?.score ?? 0;
+            tempPunteggio -= TilesCost[menoCostosa.Value];
+        }
+        while (currentPosition.y != G2.y) //se mi devo spostare in y
+        {
+            int spostamentoY = (currentPosition.y < G2.y) ? 1 : -1;
+            List<Tiles> disponibili = new List<Tiles> { Tiles.rettilineo_verticale, Tiles.incrocio, Tiles.t_su_giu_sinistra, Tiles.t_su_giu_destra};
+            Tiles? menoCostosa = disponibili.Where(t => tempTilesAvailable[t] > 0).OrderBy(t => TilesCost[t]).FirstOrDefault();
+            if (menoCostosa == null) throw new Exception();
+
+            currentPosition = new Point(currentPosition.x, currentPosition.y + spostamentoY);
+            tempTileUsate.Add(currentPosition, menoCostosa.Value);
+            tempTilesAvailable[menoCostosa.Value] = tempTilesAvailable[menoCostosa.Value] - 1;
+            tempPunteggio += S.Where(s => s.x == currentPosition.x && s.y == currentPosition.y).FirstOrDefault()?.score ?? 0;
+            tempPunteggio -= TilesCost[menoCostosa.Value];
+        }
+
+        //riporta tutti i valori temporanei nelle variabili globali solo quando abbiamo raggiunto G2
+
+        foreach (var tile in tempTilesAvailable.Keys)
+        {
+            TilesAvailable[tile] = tempTilesAvailable[tile];
+        }
+
+        foreach (var tile in tempTileUsate)
+        {
+            TileUsate.Add(tile.Key, tile.Value);
+        }
+
+        punteggio += tempPunteggio;
+
     }
 }
 
 class Point
 {
-    int x;
-    int y;
+    public int x;
+    public int y;
 
     public Point(int x, int y)
     {
@@ -69,7 +158,7 @@ class Point
 
 class SilverPoint: Point
 {
-    int score;
+    public int score;
 
     public SilverPoint(int x, int y, int score) : base(x, y)
     {
@@ -77,11 +166,17 @@ class SilverPoint: Point
     }
 }
 
-enum Tile
+enum Tiles
 {
-    rettilinio_orizzontale,
-    svolta_giu_dx,
-    svolta_sx_giu;
-    //...
-
+    rettilineo_orizzontale = 0x33     ,
+  curva_giu_destra = 0x35             ,
+  curva_sinistra_giu = 0x36           ,
+  t_sinistra_destra_giu = 0x37        ,
+  curva_su_destra = 0x39              ,
+  curva_sinistra_su = 0x41            ,
+  t_sinistra_destra_su = 0x42         ,
+  rettilineo_verticale = 0x43         ,
+  t_su_giu_destra = 0x44              ,
+  t_su_giu_sinistra = 0x45            ,
+  incrocio = 0x46                     ,
 }
