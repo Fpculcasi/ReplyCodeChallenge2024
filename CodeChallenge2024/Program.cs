@@ -1,11 +1,11 @@
-﻿using System;
-using System.Linq;
-using System.Runtime.CompilerServices;
+﻿using System.Text;
 
 internal class Program
 {
     static string INPUT_DIRECTORY = "../../../input/";
     static string[] INPUT_FILES = { "00-trailer.txt" };
+    static string OUTPUT_DIRECTORY = "../../../output/";
+    static string[] OUTPUT_FILES = { "00-trailer.txt" };
 
     // Define variables to store the input values
     static int W, H, N, M, L;
@@ -23,6 +23,8 @@ internal class Program
         Read();
         Solve();
         Write();
+
+        CalculateLoadRoad();
     }
 
     static void Read()
@@ -53,11 +55,11 @@ internal class Program
             for (int i = 0; i < L; i++)
             {
                 string[] parts = reader.ReadLine().Split(' ');
-                string TIDk = parts[0];
+                int TIDk = Encoding.ASCII.GetBytes(parts[0]).First();
                 int TCk = int.Parse(parts[1]);
                 int TNk = int.Parse(parts[2]);
-                TilesAvailable.Add(Tiles.fromCode(TIDk), TCk);
-                TilesCost.Add(Tiles.fromCode(TIDk), TNk);
+                TilesAvailable.Add((Tiles) TIDk, TCk);
+                TilesCost.Add((Tiles) TIDk, TNk);
             }
         }
     }
@@ -79,14 +81,15 @@ internal class Program
 
         //for ( int i = 0; i < distanzeTraGoldenPoint.Count; i++)
         //{
-            var closest = distanzeTraGoldenPoint.OrderBy(kvp => kvp.Value).First();
+        var closest = distanzeTraGoldenPoint.OrderBy(kvp => kvp.Value).First();
 
         //coprire il percorso tra closest.key.Item1 e closest.key.Item2
-            try
-            {
-                FindTheTilesAmong(closest.Key.Item1, closest.Key.Item2);
-            } catch (Exception e) { Console.WriteLine("Non ci sono abbastanza tile");  }
-            distanzeTraGoldenPoint.Remove(closest.Key);
+        try
+        {
+            FindTheTilesAmong(closest.Key.Item1, closest.Key.Item2);
+        }
+        catch (Exception e) { Console.WriteLine("Non ci sono abbastanza tile"); }
+        distanzeTraGoldenPoint.Remove(closest.Key);
         //}
     }
 
@@ -94,12 +97,12 @@ internal class Program
     {
         int tempPunteggio = 0;
         Dictionary<Tiles, int> tempTilesAvailable = new Dictionary<Tiles, int>();
-        foreach(var tile in TilesAvailable.Keys)
+        foreach (var tile in TilesAvailable.Keys)
         {
             tempTilesAvailable.Add(tile, TilesAvailable[tile]);
         }
         Dictionary<Point, Tiles> tempTileUsate = new Dictionary<Point, Tiles>();
-        
+
         Point currentPosition = G1;
         while (currentPosition.x != G2.x) //se mi devo spostare in x
         {
@@ -111,13 +114,13 @@ internal class Program
             currentPosition = new Point(currentPosition.x + spostamentoX, currentPosition.y);
             tempTileUsate.Add(currentPosition, menoCostosa.Value);
             tempTilesAvailable[menoCostosa.Value] = tempTilesAvailable[menoCostosa.Value] - 1;
-            tempPunteggio += S.Where(s=> s.x == currentPosition.x && s.y == currentPosition.y).FirstOrDefault()?.score ?? 0;
+            tempPunteggio += S.Where(s => s.x == currentPosition.x && s.y == currentPosition.y).FirstOrDefault()?.score ?? 0;
             tempPunteggio -= TilesCost[menoCostosa.Value];
         }
         while (currentPosition.y != G2.y) //se mi devo spostare in y
         {
             int spostamentoY = (currentPosition.y < G2.y) ? 1 : -1;
-            List<Tiles> disponibili = new List<Tiles> { Tiles.rettilineo_verticale, Tiles.incrocio, Tiles.t_su_giu_sinistra, Tiles.t_su_giu_destra};
+            List<Tiles> disponibili = new List<Tiles> { Tiles.rettilineo_verticale, Tiles.incrocio, Tiles.t_su_giu_sinistra, Tiles.t_su_giu_destra };
             Tiles? menoCostosa = disponibili.Where(t => tempTilesAvailable[t] > 0).OrderBy(t => TilesCost[t]).FirstOrDefault();
             if (menoCostosa == null) throw new Exception();
 
@@ -143,6 +146,22 @@ internal class Program
         punteggio += tempPunteggio;
 
     }
+    static void Write()
+    {
+        using (StreamWriter writer = File.CreateText(OUTPUT_DIRECTORY + OUTPUT_FILES[0]))
+        {
+            foreach (var item in TileUsate)
+            {
+                writer.WriteLine(Convert.ToChar((int)item.Value) + " " + item.Key.x + " " + item.Key.y);
+            }
+        }
+    }
+
+    static void CalculateLoadRoad()
+    {
+        Console.WriteLine("Punteggio " + punteggio);
+    }
+
 }
 
 class Point
@@ -156,7 +175,7 @@ class Point
     }
 }
 
-class SilverPoint: Point
+class SilverPoint : Point
 {
     public int score;
 
@@ -168,15 +187,15 @@ class SilverPoint: Point
 
 enum Tiles
 {
-    rettilineo_orizzontale = 0x33     ,
-  curva_giu_destra = 0x35             ,
-  curva_sinistra_giu = 0x36           ,
-  t_sinistra_destra_giu = 0x37        ,
-  curva_su_destra = 0x39              ,
-  curva_sinistra_su = 0x41            ,
-  t_sinistra_destra_su = 0x42         ,
-  rettilineo_verticale = 0x43         ,
-  t_su_giu_destra = 0x44              ,
-  t_su_giu_sinistra = 0x45            ,
-  incrocio = 0x46                     ,
+    rettilineo_orizzontale = 0x33,
+    curva_giu_destra = 0x35,
+    curva_sinistra_giu = 0x36,
+    t_sinistra_destra_giu = 0x37,
+    curva_su_destra = 0x39,
+    curva_sinistra_su = 0x41,
+    t_sinistra_destra_su = 0x42,
+    rettilineo_verticale = 0x43,
+    t_su_giu_destra = 0x44,
+    t_su_giu_sinistra = 0x45,
+    incrocio = 0x46
 }
