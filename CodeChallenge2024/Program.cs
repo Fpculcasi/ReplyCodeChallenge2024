@@ -56,8 +56,8 @@ internal class Program
             {
                 string[] parts = reader.ReadLine().Split(' ');
                 int TIDk = Encoding.ASCII.GetBytes(parts[0]).First();
-                int TCk = int.Parse(parts[1]);
-                int TNk = int.Parse(parts[2]);
+                int TNk = int.Parse(parts[1]);
+                int TCk = int.Parse(parts[2]);
                 TilesAvailable.Add((Tiles) TIDk, TCk);
                 TilesCost.Add((Tiles) TIDk, TNk);
             }
@@ -79,18 +79,29 @@ internal class Program
             }
         }
 
-        //for ( int i = 0; i < distanzeTraGoldenPoint.Count; i++)
-        //{
-        var closest = distanzeTraGoldenPoint.OrderBy(kvp => kvp.Value).First();
-
-        //coprire il percorso tra closest.key.Item1 e closest.key.Item2
-        try
+        for ( int i = 0; i < distanzeTraGoldenPoint.Count; i++)
         {
-            FindTheTilesAmong(closest.Key.Item1, closest.Key.Item2);
+            var closest = distanzeTraGoldenPoint.OrderBy(kvp => kvp.Value).First();
+
+            //coprire il percorso tra closest.key.Item1 e closest.key.Item2
+            try
+            {
+                foreach (SilverPoint silverPoint in S)
+                {
+                    FindTheTilesAmong(closest.Key.Item1, silverPoint);
+                    if (punteggio > 0)
+                    {
+                        FindTheTilesAmong(silverPoint, closest.Key.Item2);
+                        if (punteggio > 0)
+                            break;
+                    }
+                }
+
+
+            }
+            catch (Exception e) { Console.WriteLine("Non ci sono abbastanza tile"); }
+            distanzeTraGoldenPoint.Remove(closest.Key);
         }
-        catch (Exception e) { Console.WriteLine("Non ci sono abbastanza tile"); }
-        distanzeTraGoldenPoint.Remove(closest.Key);
-        //}
     }
 
     private static void FindTheTilesAmong(Point G1, Point G2)
@@ -112,10 +123,24 @@ internal class Program
             if (menoCostosa == null) throw new Exception();
 
             currentPosition = new Point(currentPosition.x + spostamentoX, currentPosition.y);
-            tempTileUsate.Add(currentPosition, menoCostosa.Value);
-            tempTilesAvailable[menoCostosa.Value] = tempTilesAvailable[menoCostosa.Value] - 1;
-            tempPunteggio += S.Where(s => s.x == currentPosition.x && s.y == currentPosition.y).FirstOrDefault()?.score ?? 0;
-            tempPunteggio -= TilesCost[menoCostosa.Value];
+            KeyValuePair<Point, Tiles>? pastTile = TileUsate.Where(t => t.Key.x == currentPosition.x && t.Key.y == currentPosition.y).FirstOrDefault();
+            int currentPoint = S.Where(s => s.x == currentPosition.x && s.y == currentPosition.y).FirstOrDefault()?.score ?? 0;
+            if (currentPoint != 0)
+            {
+                tempPunteggio += currentPoint;
+            }
+            else if (currentPosition.y != G2.y || currentPosition.x != G2.x)
+            {
+                if (pastTile == null)
+                {
+                    tempTileUsate.Add(currentPosition, menoCostosa.Value);
+                    tempTilesAvailable[menoCostosa.Value] = tempTilesAvailable[menoCostosa.Value] - 1;
+                    tempPunteggio -= TilesCost[menoCostosa.Value];
+                } else
+                {
+                    tempPunteggio -= TilesCost[pastTile.Value.Value];
+                }
+            }
         }
         while (currentPosition.y != G2.y) //se mi devo spostare in y
         {
@@ -125,10 +150,24 @@ internal class Program
             if (menoCostosa == null) throw new Exception();
 
             currentPosition = new Point(currentPosition.x, currentPosition.y + spostamentoY);
-            tempTileUsate.Add(currentPosition, menoCostosa.Value);
-            tempTilesAvailable[menoCostosa.Value] = tempTilesAvailable[menoCostosa.Value] - 1;
-            tempPunteggio += S.Where(s => s.x == currentPosition.x && s.y == currentPosition.y).FirstOrDefault()?.score ?? 0;
-            tempPunteggio -= TilesCost[menoCostosa.Value];
+            KeyValuePair<Point, Tiles>? pastTile = TileUsate.Where(t => t.Key.x == currentPosition.x && t.Key.y == currentPosition.y).FirstOrDefault();
+            int currentPoint = S.Where(s => s.x == currentPosition.x && s.y == currentPosition.y).FirstOrDefault()?.score ?? 0;
+            if (currentPoint != 0)
+            {
+                tempPunteggio += currentPoint;
+            }
+            else if (currentPosition.y != G2.y || currentPosition.x != G2.x)
+            {
+                if (pastTile == null)
+                {
+                    tempTileUsate.Add(currentPosition, menoCostosa.Value);
+                    tempTilesAvailable[menoCostosa.Value] = tempTilesAvailable[menoCostosa.Value] - 1;
+                    tempPunteggio -= TilesCost[menoCostosa.Value];
+                } else
+                {
+                    tempPunteggio -= TilesCost[pastTile.Value.Value];
+                }
+            }
         }
 
         //riporta tutti i valori temporanei nelle variabili globali solo quando abbiamo raggiunto G2
@@ -150,9 +189,11 @@ internal class Program
     {
         using (StreamWriter writer = File.CreateText(OUTPUT_DIRECTORY + OUTPUT_FILES[0]))
         {
-            foreach (var item in TileUsate)
+            for(int i =0; i<TileUsate.Count; i++)
             {
-                writer.WriteLine(Convert.ToChar((int)item.Value) + " " + item.Key.x + " " + item.Key.y);
+                var item = TileUsate.ElementAt(i);
+                writer.Write(Convert.ToChar((int)item.Value) + " " + item.Key.x + " " + item.Key.y);
+                if (i < TileUsate.Count -1) writer.Write("\n");
             }
         }
     }
